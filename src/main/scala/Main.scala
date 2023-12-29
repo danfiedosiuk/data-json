@@ -63,6 +63,9 @@ object Main {
       .withColumn("deviceParsed", from_json(col("device"), deviceSchema))
       .withColumn("geoNetworkParsed", from_json(col("geoNetwork"), geoNetworkSchema))
 
+    parsedDf.show(20, false)
+    parsedDf.printSchema()
+
     val df = parsedDf.select(
       col("_c0").as("ordinal"),
       col("date"),
@@ -70,6 +73,9 @@ object Main {
       col("fullVisitorId"),
       col("geoNetworkParsed.*")
     )
+
+    df.show(20, false) // data parsed with deviceSchema and geoNetworkSchema
+    df.coalesce(1).write.mode("overwrite").option("header", true).csv("./to_view/parsed_data")
 
     val windowSpec = Window.partitionBy("country").orderBy(col("date").desc)
 
@@ -83,6 +89,11 @@ object Main {
         collect_list(struct(col("fullVisitorId"), col("date"), col("browser"))).alias("visitor_info")
       )
       .orderBy("country")
+
+    resultDf.show(20, false)
+    resultDf.printSchema()
+    resultDf.withColumn("visitor_info", col("visitor_info").cast("string"))
+      .coalesce(1).write.mode("overwrite").option("header", true).csv("./to_view/unformatted_result")
 
     val explodedDf = resultDf.withColumn("visitor_info_exploded", explode(col("visitor_info")))
 
